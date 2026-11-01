@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>پنل استاد — MATLAB Web</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script src="coi-serviceworker.js"></script>
+<link rel="stylesheet" href="vendor/codemirror/codemirror.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/teacher.css">
+</head>
+<body class="tp">
+<header class="tp-head">
+  <div class="tp-brand"><img src="favicon.svg" alt=""><b>پنل استاد</b><span>مباحث ویژه ۱ — برنامه‌نویسی متلب</span></div>
+  <nav class="tp-nav">
+    <button data-view="students" class="on">دانشجوها</button>
+    <button data-view="assign">بر اساس تمرین</button>
+    <button data-view="course">فایل‌های درس</button>
+  </nav>
+  <div class="tp-user"><span id="tName"></span><button id="tStudentView" class="link">محیط متلب</button><button id="tLogout" class="link">خروج</button></div>
+</header>
+
+<main class="tp-main">
+  <!-- students view -->
+  <section class="tp-view" data-view="students">
+    <aside class="tp-side">
+      <input id="stSearch" placeholder="جستجوی نام یا شماره دانشجویی…">
+      <div class="tp-side-tools"><span id="stCount"></span><button id="bZipAll" class="link">دانلود همه کدها (zip)</button></div>
+      <ul id="stList" class="tp-list"></ul>
+    </aside>
+    <section class="tp-content" id="stContent">
+      <div class="tp-empty">یک دانشجو را از فهرست انتخاب کنید.</div>
+    </section>
+  </section>
+
+  <!-- assignment view -->
+  <section class="tp-view" data-view="assign" hidden>
+    <aside class="tp-side">
+      <input id="asSearch" placeholder="جستجوی نام فایل…">
+      <ul id="asList" class="tp-list"></ul>
+    </aside>
+    <section class="tp-content" id="asContent">
+      <div class="tp-empty">یک فایل (مثلاً Quiz05.m) را انتخاب کنید تا کد همه دانشجوها برای آن را ببینید.</div>
+    </section>
+  </section>
+
+  <!-- course files -->
+  <section class="tp-view" data-view="course" hidden>
+    <section class="tp-content tp-wide">
+      <h2>فایل‌های درس</h2>
+      <p class="muted">فایل‌هایی که اینجا بارگذاری کنید (مثل <code dir="ltr">ECG_Data.mat</code> یا <code dir="ltr">penguins_size.csv</code>) برای همه دانشجوها در بخش Course Files نمایش داده می‌شوند و در کدشان قابل استفاده‌اند (فقط‌خواندنی).</p>
+      <div class="cf-upload"><input type="file" id="cfInput" multiple><input id="cfDesc" placeholder="توضیح کوتاه (اختیاری)"><button id="cfUpload" class="primary">بارگذاری</button></div>
+      <table class="tp-table"><thead><tr><th>نام فایل</th><th>اندازه</th><th>توضیح</th><th>آخرین تغییر</th><th></th></tr></thead><tbody id="cfList"></tbody></table>
+    </section>
+  </section>
+</main>
+
+<!-- file viewer (shared) -->
+<template id="viewerTpl">
+  <div class="viewer">
+    <div class="viewer-head">
+      <div><b class="v-name" dir="ltr"></b> <span class="v-meta muted"></span></div>
+      <div class="v-tools"><button class="v-run primary">▶ اجرا</button><button class="v-dl link">دانلود</button></div>
+    </div>
+    <div class="v-code" dir="ltr"></div>
+    <div class="v-out-wrap" hidden><div class="v-out-title">Command Window</div><pre class="v-out" dir="ltr"></pre><div class="v-in" hidden dir="ltr"><span class="v-prompt"></span><input class="v-input"></div></div>
+    <div class="v-notes">
+      <h4>یادداشت‌های استاد برای این فایل</h4>
+      <ul class="v-note-list"></ul>
+      <textarea class="v-note-text" rows="3" placeholder="یادداشت برای دانشجو… (دانشجو آن را بالای ادیتور خودش می‌بیند)"></textarea>
+      <button class="v-note-add primary">ثبت یادداشت</button>
+    </div>
+  </div>
+</template>
+
+<div id="figs" class="figs-layer"></div>
+<div id="modal" class="modal" hidden><div class="modal-card" id="modalCard"></div></div>
+
+<script src="vendor/codemirror/codemirror.js"></script>
+<script src="vendor/codemirror/octave.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script src="config.js"></script>
+<script type="module" src="dist/teacher.js"></script>
+</body>
+</html>

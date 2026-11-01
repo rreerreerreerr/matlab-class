@@ -1,0 +1,234 @@
+>> 5+6
+ans =
+
+    11
+
+>> 1/2
+ans =
+
+    0.5000
+
+>> 5\6
+ans =
+
+    1.2000
+
+>> x=pi/4;
+>> sin(x)
+ans =
+
+    0.7071
+
+>> log10(10)
+ans =
+
+     1
+
+>> exp(10)
+ans =
+
+   2.2026e+04
+
+>> a=12.5; b=3;
+>> a^b
+ans =
+
+   1.9531e+03
+
+>> d=a+e
+Unrecognized function or variable 'e'.
+>> 1+2^3-(3/9)
+ans =
+
+    8.6667
+
+>> eps
+ans =
+
+   2.2204e-16
+
+>> realmax
+ans =
+
+   1.7977e+308
+
+>> 0/0
+ans =
+
+   NaN
+
+>> x=[1 2 3;4 5 6;7 8 9];
+>> x'
+ans =
+
+     1     4     7
+     2     5     8
+     3     6     9
+
+>> x=linspace(0,5,10)
+x =
+
+  Columns 1 through 9
+
+         0    0.5556    1.1111    1.6667    2.2222    2.7778    3.3333    3.8889    4.4444
+
+  Column 10
+
+    5.0000
+
+>> x=logspace(0,4,5)
+x =
+
+           1          10         100        1000       10000
+
+>> y=sin(0:1:8)
+y =
+
+         0    0.8415    0.9093    0.1411   -0.7568   -0.9589   -0.2794    0.6570    0.9894
+
+>> y(1:3:end)
+ans =
+
+         0    0.1411   -0.2794
+
+>> x=10:-2:1;
+>> x([2 4 5])
+ans =
+
+     8     4     2
+
+>> z=[x(1) x(3);x(5) x(7)]
+Index exceeds the number of array elements. Index must not exceed 5.
+>> who
+
+Your variables are:
+
+a    ans  b    x    y    
+
+>> whos
+  Name      Size            Bytes  Class     Attributes
+
+  a         1x1                 8  double    
+  ans       1x3                24  double    
+  b         1x1                 8  double    
+  x         1x5                40  double    
+  y         1x9                72  double    
+
+>> format long
+>> pi
+ans =
+
+   3.141592653589793
+
+>> format short e
+>> pi
+ans =
+
+   3.1416e+00
+
+>> format short g
+>> pi
+ans =
+
+   3.1416
+
+>> format bank
+>> pi
+ans =
+
+      3.14
+
+>> format rat
+>> pi
+ans =
+
+     355/113
+
+>> format short
+>> A=[3 7 5;6 8 3;0 4 2];
+>> [a,b]=sort([10 -2 3 8 1])
+a =
+
+    -2     1     3     8    10
+
+b =
+
+     2     5     3     4     1
+
+>> sort(A,2,'descend')
+ans =
+
+     7     5     3
+     8     6     3
+     4     2     0
+
+>> max(A,[],2)
+ans =
+
+     7
+     8
+     4
+
+>> max(A,4)
+ans =
+
+     4     7     5
+     6     8     4
+     4     4     4
+
+>> mean(A,2)
+ans =
+
+    5.0000
+    5.6667
+    2.0000
+
+>> std([1 5 9;7 15 22],0,1)
+ans =
+
+    4.2426    7.0711    9.1924
+
+>> [m,n]=size([1 2 3 4 5])
+m =
+
+     1
+
+n =
+
+     5
+
+>> cumprod([1 2 3 4 5])
+ans =
+
+     1     2     6    24   120
+
+>> x=[1 2 3]; y=[2 4 6];
+>> z=[x' y]
+Error using horzcat
+Dimensions of arrays being concatenated are not consistent.
+>> z=[x';y']
+z =
+
+     1
+     2
+     3
+     2
+     4
+     6
+
+>> x*y
+Error using  * 
+Incorrect dimensions for matrix multiplication. Check that the number of columns in the first matrix matches the number of rows in the second matrix. To operate on each element of the matrix individually, use TIMES (.*) for elementwise multiplication.
+>> x.^2
+ans =
+
+     1     4     9
+
+>> x^2
+Error using  ^ 
+Incorrect dimensions for raising a matrix to a power. Check that the matrix is square and the power is a scalar. To operate on each element of the matrix individually, use POWER (.^) for elementwise power.
+>> 2.^x
+ans =
+
+     2     4     8
+

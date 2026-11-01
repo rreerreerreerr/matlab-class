@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MATLAB Online — کلاس مباحث ویژه ۱</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<script src="coi-serviceworker.js"></script>
+<link rel="stylesheet" href="vendor/codemirror/codemirror.css">
+<link rel="stylesheet" href="vendor/codemirror/show-hint.css">
+<link rel="stylesheet" href="vendor/codemirror/dialog.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<!-- ================= login / register ================= -->
+<div id="auth" class="auth" dir="rtl" hidden>
+  <div class="auth-card">
+    <div class="auth-logo"><img src="favicon.svg" alt=""><div><b>محیط برنامه‌نویسی متلب</b><span>درس مباحث ویژه ۱ — برنامه‌نویسی متلب</span></div></div>
+    <div class="auth-tabs"><button data-tab="login" class="on">ورود</button><button data-tab="register">ثبت‌نام</button></div>
+    <form id="loginForm" class="auth-form">
+      <label>شماره دانشجویی<input name="sid" required autocomplete="username" inputmode="latin" dir="ltr"></label>
+      <label>رمز عبور<input name="pw" type="password" required autocomplete="current-password" dir="ltr"></label>
+      <button type="submit" class="primary">ورود</button>
+    </form>
+    <form id="registerForm" class="auth-form" hidden>
+      <label>نام و نام خانوادگی<input name="name" required autocomplete="name"></label>
+      <label>شماره دانشجویی<input name="sid" required autocomplete="username" dir="ltr" pattern="[A-Za-z0-9_\-\.]{3,30}" title="فقط عدد و حروف انگلیسی (۳ تا ۳۰ کاراکتر)"></label>
+      <label>رمز عبور<input name="pw" type="password" required minlength="6" autocomplete="new-password" dir="ltr"></label>
+      <label>تکرار رمز عبور<input name="pw2" type="password" required minlength="6" autocomplete="new-password" dir="ltr"></label>
+      <button type="submit" class="primary">ساخت حساب</button>
+    </form>
+    <p id="authMsg" class="auth-msg" role="alert"></p>
+    <p class="auth-foot" id="authFoot"></p>
+  </div>
+</div>
+
+<!-- ================= IDE ================= -->
+<div id="ide" class="ide" hidden>
+  <header class="titlebar">
+    <span class="tb-logo"><img src="favicon.svg" alt=""> MATLAB R2021b — Online</span>
+    <span class="tb-user" id="userBox"></span>
+  </header>
+  <nav class="toolstrip-tabs">
+    <button class="tst on" data-strip="home">HOME</button>
+    <button class="tst" data-strip="editor">EDITOR</button>
+    <button class="tst" data-strip="assign">ASSIGNMENTS</button>
+    <span class="tst-spacer"></span>
+    <input class="search-doc" id="searchDoc" placeholder="Search Documentation" aria-label="Search documentation">
+  </nav>
+  <section class="toolstrip">
+    <div class="strip" data-strip="home">
+      <div class="grp"><button class="big" id="bNewScript"><i class="ic ic-new"></i>New<br>Script</button><button class="big" id="bNewFunc"><i class="ic ic-func"></i>New<br>Function</button><button class="big" id="bUpload"><i class="ic ic-open"></i>Upload<br>File</button><span class="glabel">FILE</span></div>
+      <div class="grp"><button class="big" id="bClearWs"><i class="ic ic-clearws"></i>Clear<br>Workspace</button><button class="big" id="bClc"><i class="ic ic-clc"></i>Clear<br>Commands</button><span class="glabel">VARIABLE / CODE</span></div>
+      <div class="grp"><button class="big" id="bCloseFigs"><i class="ic ic-fig"></i>Close<br>Figures</button><span class="glabel">PLOTS</span></div>
+      <div class="grp"><button class="big" id="bHelp"><i class="ic ic-help"></i>Help</button><button class="big" id="bPassword"><i class="ic ic-key"></i>Change<br>Password</button><span class="glabel">RESOURCES</span></div>
+    </div>
+    <div class="strip" data-strip="editor" hidden>
+      <div class="grp"><button class="big" id="bSave"><i class="ic ic-save"></i>Save</button><button class="big" id="bDownload"><i class="ic ic-down"></i>Download</button><span class="glabel">FILE</span></div>
+      <div class="grp"><button class="sm" id="bComment">% Comment</button><button class="sm" id="bUncomment">Uncomment</button><button class="sm" id="bIndent">Smart Indent</button><span class="glabel">EDIT</span></div>
+      <div class="grp"><button class="big run" id="bRun"><i class="ic ic-run"></i>Run</button><button class="big" id="bRunSection"><i class="ic ic-runsec"></i>Run<br>Section</button><button class="big stop" id="bStop" disabled><i class="ic ic-stop"></i>Stop</button><span class="glabel">RUN</span></div>
+    </div>
+    <div class="strip" data-strip="assign" hidden dir="rtl">
+      <div class="assign-strip" id="assignStrip"></div>
+    </div>
+  </section>
+  <div class="addressbar"><span class="crumb">&#9664; &#9654; &#128193; / MATLAB Drive /</span><span id="saveState" class="save-state"></span></div>
+
+  <main class="desk" id="desk">
+    <section class="panel p-folder" id="pFolder">
+      <div class="ptitle">Current Folder<button class="pbtn" id="bRefresh" title="Refresh">&#8635;</button></div>
+      <div class="pbody">
+        <table class="ftable"><thead><tr><th>Name</th></tr></thead><tbody id="fileList"></tbody></table>
+        <div class="course-head">Course Files <small>(shared by teacher)</small></div>
+        <ul id="courseList" class="course-list"></ul>
+      </div>
+      <div class="pdetails" id="fileDetails">Select a file to view details</div>
+    </section>
+
+    <section class="center">
+      <section class="panel p-editor" id="pEditor">
+        <div class="ptitle">Editor — <span id="edTitle">untitled</span></div>
+        <div class="etabs" id="etabs"></div>
+        <div class="note-banner" id="noteBanner" dir="rtl" hidden></div>
+        <div class="ebody" id="ebody"><div class="empty-editor" id="emptyEditor"><p>No file is open.</p><button id="bNewScript2">New Script</button></div></div>
+      </section>
+      <div class="hsplit" id="hsplit" title="Drag to resize"></div>
+      <section class="panel p-cmd" id="pCmd">
+        <div class="ptitle">Command Window<button class="pbtn" id="bCmdMenu" title="Clear">&#8856;</button></div>
+        <div class="cmd" id="cmd" tabindex="0">
+          <div id="cmdOut" class="cmd-out" role="log" aria-live="polite"></div>
+          <div class="cmd-line" id="cmdLine"><span class="fx">fx</span><span class="prompt" id="prompt">&gt;&gt;</span><textarea id="cmdIn" rows="1" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Command input"></textarea></div>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel p-ws" id="pWs">
+      <div class="ptitle">Workspace</div>
+      <div class="pbody">
+        <table class="wstable"><thead><tr><th>Name &#9650;</th><th>Value</th><th class="opt">Size</th><th class="opt">Class</th></tr></thead><tbody id="wsList"></tbody></table>
+      </div>
+    </section>
+  </main>
+  <nav class="mobile-tabs" id="mobileTabs">
+    <button data-p="pFolder">Files</button><button data-p="pEditor" class="on">Editor</button><button data-p="pCmd">Command</button><button data-p="pWs">Workspace</button>
+  </nav>
+  <footer class="statusbar"><span id="status">Ready</span><span class="sb-right" id="cursorPos"></span></footer>
+</div>
+
+<div id="figs" class="figs-layer"></div>
+<input type="file" id="fileInput" multiple hidden>
+<div id="modal" class="modal" hidden><div class="modal-card" id="modalCard"></div></div>
+<div id="ctxMenu" class="ctx" hidden></div>
+
+<script src="vendor/codemirror/codemirror.js"></script>
+<script src="vendor/codemirror/octave.js"></script>
+<script src="vendor/codemirror/matchbrackets.js"></script>
+<script src="vendor/codemirror/closebrackets.js"></script>
+<script src="vendor/codemirror/comment.js"></script>
+<script src="vendor/codemirror/show-hint.js"></script>
+<script src="vendor/codemirror/active-line.js"></script>
+<script src="vendor/codemirror/searchcursor.js"></script>
+<script src="vendor/codemirror/dialog.js"></script>
+<script src="vendor/codemirror/search.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script src="config.js"></script>
+<script type="module" src="dist/app.js"></script>
+</body>
+</html>

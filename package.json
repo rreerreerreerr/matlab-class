@@ -1,0 +1,25 @@
+{
+  "name": "matlab-web",
+  "version": "1.0.0",
+  "description": "Browser-based MATLAB-like environment for a university course",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node test/suite.mjs",
+    "serve": "node serve.mjs"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  },
+  "dependencies": {
+    "fflate": "^0.8.2",
+    "nerdamer": "^1.1.13",
+    "xlsx": "^0.18.5"
+  },
+  "type": "module",
+  "private": true
+}
