@@ -532,9 +532,9 @@ function setupToolstrip() {
     for (const file of e.target.files) {
       if (file.size > 15 * 1024 * 1024) { await alertFa(`فایل ${file.name} بزرگ‌تر از ۱۵ مگابایت است.`); continue; }
       const name = file.name.replace(/\s+/g, '_');
-      if (guard.enabled && /\.(m|txt)$/i.test(name)) { await alertFa(`بارگذاری فایل کد (${name}) برای دانشجوها بسته است. کد را خودتان در ادیتور بنویسید.`); continue; }
       const data = isBinaryName(name) ? new Uint8Array(await file.arrayBuffer()) : await file.text();
       setFile(name, data, true);
+      if (guard.enabled && typeof data === 'string') { const f = state.files.get(name); f.stats.uploaded = (f.stats.uploaded || 0) + 1; }
       if (name.endsWith('.m')) openFile(name);
     }
     e.target.value = '';
