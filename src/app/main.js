@@ -204,6 +204,8 @@ function fileMenu(e, name) {
   ]);
 }
 function openOrLoad(name) {
+  toggleDrawer(false);
+  showPanelMobile(name.endsWith('.mat') ? 'pCmd' : 'pEditor');
   if (name.endsWith('.m') || /\.(txt|csv)$/i.test(name)) openFile(name);
   else if (name.endsWith('.mat')) runCommand(`load('${name}')`);
   else fileDetails(name);
@@ -315,6 +317,7 @@ function openFile(name) {
   showPanelMobile('pEditor');
 }
 function openReadOnly(name) {
+  toggleDrawer(false); showPanelMobile('pEditor');
   const key = '🔒' + name;
   if (!state.docs.has(key)) state.docs.set(key, CodeMirror.Doc(String(state.courseFiles.get(name) || ''), 'octave'));
   if (!state.open.includes(key)) state.open.push(key);
@@ -582,11 +585,19 @@ function setupSplitters() {
   hs.addEventListener('pointermove', (e) => { if (!drag) return; const top = ed.getBoundingClientRect().top; const h = Math.max(80, e.clientY - top); ed.style.flex = `0 0 ${h}px`; cm.refresh(); });
   hs.addEventListener('pointerup', () => { drag = false; });
 }
+const MOBILE = window.matchMedia('(max-width: 760px), (max-height: 500px) and (pointer: coarse)');
 function setupMobile() {
-  $$('#mobileTabs button').forEach(b => (b.onclick = () => showPanelMobile(b.dataset.p)));
+  $$('#mobileTabs button').forEach(b => (b.onclick = () => (b.dataset.p === 'pFolder' ? toggleDrawer() : showPanelMobile(b.dataset.p))));
+  $('#bDrawer').onclick = () => toggleDrawer();
+  $('#drawerBack').onclick = () => toggleDrawer(false);
+}
+// Current Folder slides in from the side on phones
+function toggleDrawer(open = !document.body.classList.contains('drawer-open')) {
+  document.body.classList.toggle('drawer-open', open && MOBILE.matches);
 }
 function showPanelMobile(id) {
-  if (window.innerWidth > 760) return;
+  if (!MOBILE.matches) return;
+  toggleDrawer(false);
   $$('#mobileTabs button').forEach(b => b.classList.toggle('on', b.dataset.p === id));
   $('#desk').dataset.mobile = id;
   if (id === 'pEditor') setTimeout(() => cm.refresh(), 0);
