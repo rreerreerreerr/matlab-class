@@ -47,9 +47,12 @@ export class Guard {
     cm.on('beforeChange', (c, ch) => {
       if (!this.enabled) return;
       const text = ch.text.join('\n');
-      const pasteLike = ch.origin === 'paste' || ch.origin === 'drop' || (ch.origin === '+input' && text.length >= IME_LIMIT);
+      const pasteLike = ch.origin === 'paste' || ch.origin === 'drop' ||
+        (ch.origin === '+input' && (text.length >= IME_LIMIT || (ch.text.length > 1 && text.trim().length >= 10)));
       if (pasteLike && !this.isInternal(text)) { ch.cancel(); this.blocked(); }
     });
+    // phones: stop the paste before CodeMirror sees it (capture phase on its hidden input)
+    this.attachInput(cm.getInputField(), true);
     cm.on('change', (c, ch) => {
       if (ch.origin === 'setValue' || ch.origin === 'undo' || ch.origin === 'redo') return;
       const text = ch.text.join('\n');
@@ -62,23 +65,26 @@ export class Guard {
     });
   }
 
-  attachInput(el) {
-    el.addEventListener('copy', () => this.remember(el.value.slice(el.selectionStart, el.selectionEnd)));
-    el.addEventListener('cut', () => this.remember(el.value.slice(el.selectionStart, el.selectionEnd)));
-    el.addEventListener('keydown', () => this.typed());
+  attachInput(el, editorField = false) {
+    const stop = (e) => { e.preventDefault(); e.stopImmediatePropagation(); this.blocked(); };
+    if (!editorField) {
+      el.addEventListener('copy', () => this.remember(el.value.slice(el.selectionStart, el.selectionEnd)));
+      el.addEventListener('cut', () => this.remember(el.value.slice(el.selectionStart, el.selectionEnd)));
+      el.addEventListener('keydown', () => this.typed());
+    }
     el.addEventListener('paste', (e) => {
-      if (this.enabled && !this.isInternal(e.clipboardData && e.clipboardData.getData('text'))) { e.preventDefault(); this.blocked(); }
-    });
+      if (this.enabled && !this.isInternal(e.clipboardData && e.clipboardData.getData('text'))) stop(e);
+    }, true);
     el.addEventListener('drop', (e) => {
-      if (this.enabled && !this.isInternal(e.dataTransfer && e.dataTransfer.getData('text'))) { e.preventDefault(); this.blocked(); }
-    });
+      if (this.enabled && !this.isInternal(e.dataTransfer && e.dataTransfer.getData('text'))) stop(e);
+    }, true);
     // mobile keyboards may insert clipboard text without a paste event
     el.addEventListener('beforeinput', (e) => {
       if (!this.enabled) return;
       const big = /^insertFrom(Paste|Drop)/.test(e.inputType) || ((e.inputType === 'insertText' || e.inputType === 'insertReplacementText') && (e.data || '').length >= IME_LIMIT);
       const data = e.data ?? (e.dataTransfer && e.dataTransfer.getData('text'));
-      if (big && data != null && !this.isInternal(data)) { e.preventDefault(); this.blocked(); }
-    });
+      if (big && data != null && !this.isInternal(data)) stop(e);
+    }, true);
   }
 
   typed() {

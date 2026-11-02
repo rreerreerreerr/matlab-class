@@ -314,6 +314,7 @@ function saveState(t, warn = false) { const el = $('#saveState'); el.textContent
 function setupEditor() {
   cm = CodeMirror($('#ebody'), {
     mode: 'octave', lineNumbers: true, indentUnit: 4, tabSize: 4, matchBrackets: true, autoCloseBrackets: "()[]{}''\"\"",
+    inputStyle: 'textarea', // also on phones, so paste can be intercepted reliably
     styleActiveLine: true, theme: 'matlab', lineWrapping: false, viewportMargin: 30,
     extraKeys: {
       'Ctrl-S': () => saveActive(), 'Cmd-S': () => saveActive(),
