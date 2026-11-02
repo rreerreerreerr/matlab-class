@@ -57,13 +57,14 @@ class SupabaseStore {
   // ---- student files ----
   async listFiles() {
     const s = await this.session();
-    const { data, error } = await this.sb.from('files').select('id,name,content,is_binary,size,updated_at').eq('owner', s.user.id).order('name');
+    const { data, error } = await this.sb.from('files').select('id,name,content,is_binary,size,updated_at,stats').eq('owner', s.user.id).order('name');
     if (error) throw error;
-    return data.map(r => ({ id: r.id, name: r.name, data: decode(r), updated_at: r.updated_at }));
+    return data.map(r => ({ id: r.id, name: r.name, data: decode(r), updated_at: r.updated_at, stats: r.stats }));
   }
-  async saveFile(name, data) {
+  async saveFile(name, data, stats) {
     const s = await this.session();
     const row = { owner: s.user.id, name, ...encode(data), updated_at: new Date().toISOString() };
+    if (stats) row.stats = stats;
     const { data: res, error } = await this.sb.from('files').upsert(row, { onConflict: 'owner,name' }).select('id,updated_at').single();
     if (error) throw error;
     return res;
@@ -103,12 +104,12 @@ class SupabaseStore {
     return data;
   }
   async studentFiles(studentId) {
-    const { data, error } = await this.sb.from('files').select('id,name,content,is_binary,size,created_at,updated_at').eq('owner', studentId).order('name');
+    const { data, error } = await this.sb.from('files').select('id,name,content,is_binary,size,created_at,updated_at,stats').eq('owner', studentId).order('name');
     if (error) throw error;
     return data.map(r => ({ ...r, data: decode(r) }));
   }
   async allFilesMeta() {
-    const { data, error } = await this.sb.from('files').select('id,name,owner,size,updated_at').order('name');
+    const { data, error } = await this.sb.from('files').select('id,name,owner,size,updated_at,stats').order('name');
     if (error) throw error;
     return data;
   }
@@ -150,7 +151,7 @@ class MockTeacherStore {
     this.files = [
       { id: 'f1', owner: 's1', name: 'Quiz05.m', content: "%% Quiz 5\nA = [4 7 2; 1 5 9; 6 3 8];\nmx = max(A(:))\nmn = min(A(:))\ns = sum(A(:))\nm = mean(A(:))\n", is_binary: false },
       { id: 'f2', owner: 's1', name: 'Quiz12.m', content: "time = 0:1:9;\nheartRate = [72 74 78 85 92 105 112 108 96 88];\nplot(time,heartRate,'-or','LineWidth',2)\ntitle('Heart rate'), xlabel('Time (min)'), ylabel('bpm'), grid on, legend('HR')\n", is_binary: false },
-      { id: 'f3', owner: 's2', name: 'Quiz05.m', content: "A = [4 7 2; 1 5 9; 6 3 8];\nmax(A)\nsum(A)\n", is_binary: false },
+      { id: 'f3', owner: 's2', stats: { keys: 12, activeMs: 9000, pasteBlocked: 3, bulk: 1, bulkMax: 4 }, name: 'Quiz05.m', content: "A = [4 7 2; 1 5 9; 6 3 8];\nmax(A)\nsum(A)\n", is_binary: false },
       { id: 'f4', owner: 's2', name: 'Quiz11.m', content: "name = input('Name: ','s');\ng = input('Grades: ');\nfprintf('%s: %.2f\\n', name, mean(g));\n", is_binary: false },
     ].map((f, k) => ({ ...f, size: f.content.length, created_at: new Date(now - 5e8 + k * 1e7).toISOString(), updated_at: new Date(now - 1e8 + k * 1e7).toISOString() }));
     this.notes = [{ id: 'n1', file_id: 'f3', body: 'max(A) بیشترین مقدار هر ستون را می‌دهد؛ برای کل ماتریس از max(A(:)) استفاده کنید.', created_at: new Date(now - 5e7).toISOString() }];
@@ -161,7 +162,7 @@ class MockTeacherStore {
   async signOut() {}
   async listStudents() { return this.students.map(s => { const fs = this.files.filter(f => f.owner === s.id); return { ...s, file_count: fs.length, last_activity: fs.length ? fs.map(f => f.updated_at).sort().pop() : null }; }); }
   async studentFiles(id) { return this.files.filter(f => f.owner === id).map(f => ({ ...f, data: f.content })); }
-  async allFilesMeta() { return this.files.map(({ id, name, owner, size, updated_at }) => ({ id, name, owner, size, updated_at })); }
+  async allFilesMeta() { return this.files.map(({ id, name, owner, size, updated_at, stats }) => ({ id, name, owner, size, updated_at, stats })); }
   async notesFor(fileId) { return this.notes.filter(n => n.file_id === fileId); }
   async addNote(fileId, body) { this.notes.push({ id: 'n' + Math.random(), file_id: fileId, body, created_at: new Date().toISOString() }); }
   async deleteNote(id) { this.notes = this.notes.filter(n => n.id !== id); }

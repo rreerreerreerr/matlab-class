@@ -58,3 +58,9 @@ body.tp { font-family: var(--fa); background: #eef1f5; height: auto; min-height:
 .cf-upload input[type=text], #cfDesc { font: 14px var(--fa); padding: 6px 8px; border: 1px solid #c4ccd8; border-radius: 6px; min-width: 220px; }
 .err { color: var(--err); }
 @media (max-width: 800px) { .tp-view { grid-template-columns: 1fr; } .tp-side { position: static; max-height: 50vh; } }
+
+/* typing / paste flags */
+.flag { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 12px; white-space: nowrap; margin: 1px 0; }
+.flag.ok { background: #e8f3ea; color: #23633a; }
+.flag.warn { background: #fff3d6; color: #8a5a00; }
+.flag.bad { background: #fde4e4; color: #a12323; }

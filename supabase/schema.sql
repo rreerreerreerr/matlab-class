@@ -11,6 +11,7 @@ create table if not exists public.profiles (
   full_name   text not null default '',
   student_id  text not null unique,
   role        text not null default 'student' check (role in ('student', 'teacher')),
+  can_paste   boolean not null default false,
   created_at  timestamptz not null default now()
 );
 
@@ -22,6 +23,7 @@ create table if not exists public.files (
   content     text not null default '',
   is_binary   boolean not null default false,
   size        integer not null default 0 check (size <= 20000000),
+  stats       jsonb not null default '{}'::jsonb,   -- typing / paste statistics
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
   unique (owner, name)
@@ -72,7 +74,7 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ---------- students may not change their role or student id ----------
+-- ---------- students may not change their role, student id or paste permission ----------
 create or replace function public.protect_profile() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
@@ -80,6 +82,7 @@ begin
   if auth.uid() is not null and not public.is_teacher() then
     new.role := old.role;
     new.student_id := old.student_id;
+    new.can_paste := old.can_paste;
   end if;
   return new;
 end $$;

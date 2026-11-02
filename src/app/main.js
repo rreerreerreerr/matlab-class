@@ -5,6 +5,7 @@ import { FigureManager } from './figures.js';
 import { createStore, isBinaryName } from './store.js';
 import { ASSIGNMENTS, starterCode } from './assignments.js';
 import { HELP_FA } from './helpfa.js';
+import { Guard, emptyStats } from './guard.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -84,13 +85,20 @@ function faError(err) {
 }
 
 // ======================= IDE =======================
-let engine, figs, cm;
+let engine, figs, cm, guard;
 async function startIDE() {
   $('#auth').hidden = true; $('#ide').hidden = false;
   const p = state.profile || {};
   $('#userBox').innerHTML = `<span dir="rtl">${esc(p.full_name || '')}</span> <small>(${esc(p.student_id || '')})</small> <button id="bLogout" class="link">Sign out</button>`;
   $('#bLogout').onclick = async () => { await flushSaves(); await store.signOut(); location.reload(); };
 
+  guard = new Guard({
+    enabled: !(p.role === 'teacher' || p.can_paste),
+    sources: () => [...[...state.files.values()].map(f => f.data), ...state.courseFiles.values(), ...state.history],
+    statsOf: () => { const f = state.active && state.files.get(state.active); return f ? (f.stats ||= emptyStats()) : null; },
+    onChange: () => { if (state.active) scheduleSave(state.active); },
+    notify: () => alertFa('چسباندن متن از بیرون سایت غیرفعال است. لطفاً کد را خودتان تایپ کنید. (این تلاش برای استاد ثبت می‌شود.)'),
+  });
   figs = new FigureManager($('#figs'), { onClose: (id) => engine.run(`close(${id})`, 'command') });
   engine = new EngineClient({
     out: (t, k) => cmdWrite(t, k),
@@ -132,11 +140,11 @@ async function loadFiles() {
   try {
     const [files, course, notes] = await Promise.all([store.listFiles(), store.listCourseFiles(), store.myNotes()]);
     state.files.clear();
-    for (const f of files) state.files.set(f.name, { data: f.data, saved: true, savedAt: f.updated_at });
+    for (const f of files) state.files.set(f.name, { data: f.data, saved: true, savedAt: f.updated_at, stats: { ...emptyStats(), ...(f.stats || {}) } });
     // local unsaved drafts (e.g. offline edits) win over server copy when newer
     for (const [name, d] of Object.entries(loadDrafts())) {
       const cur = state.files.get(name);
-      if (!cur || (d.t > Date.parse(cur.savedAt || 0) && d.data !== cur.data)) { state.files.set(name, { data: d.data, saved: false }); scheduleSave(name); }
+      if (!cur || (d.t > Date.parse(cur.savedAt || 0) && d.data !== cur.data)) { state.files.set(name, { data: d.data, saved: false, stats: cur?.stats || emptyStats() }); scheduleSave(name); }
     }
     state.courseFiles = new Map(course.map(c => [c.name, c.data]));
     state.courseMeta = new Map(course.map(c => [c.name, c]));
@@ -220,7 +228,7 @@ async function copyCourseFile(name) {
 
 function setFile(name, data, save = false) {
   const cur = state.files.get(name);
-  state.files.set(name, { data, saved: !save && cur ? cur.saved : !save, savedAt: cur?.savedAt });
+  state.files.set(name, { data, saved: !save && cur ? cur.saved : !save, savedAt: cur?.savedAt, stats: cur?.stats || emptyStats() });
   engine.setFile(name, data);
   if (state.docs.has(name) && typeof data === 'string' && state.docs.get(name).getValue() !== data) state.docs.get(name).setValue(data);
   renderFiles();
@@ -248,7 +256,7 @@ async function saveNow(name) {
   const f = state.files.get(name); if (!f) return;
   const data = f.data;
   try {
-    const r = await store.saveFile(name, data);
+    const r = await store.saveFile(name, data, f.stats);
     const cur = state.files.get(name);
     if (cur && cur.data === data) { cur.saved = true; cur.savedAt = r && r.updated_at; dropDraft(name); }
     saveState(store.mode === 'local' ? 'Saved in this browser' : 'All changes saved');
@@ -274,6 +282,7 @@ function setupEditor() {
       'Ctrl-I': (c) => c.execCommand('indentAuto'), 'Ctrl-F': 'findPersistent',
     },
   });
+  guard.attachEditor(cm);
   cm.getWrapperElement().hidden = true;
   cm.on('change', (c, ch) => {
     if (!state.active || ch.origin === 'setValue') return;
@@ -441,6 +450,7 @@ function pushHistory(code) {
 }
 function setupCommandWindow() {
   const inp = $('#cmdIn');
+  guard.attachInput(inp);
   const autosize = () => { inp.style.height = 'auto'; inp.style.height = inp.scrollHeight + 'px'; };
   inp.addEventListener('input', autosize);
   inp.addEventListener('keydown', async (e) => {
@@ -522,6 +532,7 @@ function setupToolstrip() {
     for (const file of e.target.files) {
       if (file.size > 15 * 1024 * 1024) { await alertFa(`فایل ${file.name} بزرگ‌تر از ۱۵ مگابایت است.`); continue; }
       const name = file.name.replace(/\s+/g, '_');
+      if (guard.enabled && /\.(m|txt)$/i.test(name)) { await alertFa(`بارگذاری فایل کد (${name}) برای دانشجوها بسته است. کد را خودتان در ادیتور بنویسید.`); continue; }
       const data = isBinaryName(name) ? new Uint8Array(await file.arrayBuffer()) : await file.text();
       setFile(name, data, true);
       if (name.endsWith('.m')) openFile(name);
