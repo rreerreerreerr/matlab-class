@@ -228,3 +228,6 @@ code { font-family: var(--mono); background: #f2f2f2; padding: 0 3px; border-rad
   body.drawer-open .desk > .p-folder { transform: none; }
   body.drawer-open .drawer-back { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 59; }
 }
+.fi-dir { background: #e8c25a; border: 1px solid #c9a03a; border-radius: 1px 3px 2px 2px; }
+#crumbPath a { color: inherit; }
+.ptitle > span { display: inline-flex; gap: 2px; }

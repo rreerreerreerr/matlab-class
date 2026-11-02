@@ -20,6 +20,7 @@ const state = {
   notes: [],
   open: [],                // open editor tabs (names)
   active: null,
+  cwd: '',                 // current folder ('' = MATLAB Drive root)
   docs: new Map(),         // name -> CodeMirror.Doc
   history: JSON.parse(localStorage.getItem('mw_hist') || '[]'),
   histPos: -1,
@@ -107,9 +108,9 @@ async function startIDE() {
     vars: (list) => renderWorkspace(list),
     input: (prompt) => cmdInput(prompt),
     waitKey: () => cmdWaitKey(),
-    writeFile: (name, data) => { setFile(name, data, true); },
-    deleteFile: (name) => { removeFile(name); },
-    saveFigure: async (id, name) => { const bytes = await figs.toPngBytes(id); setFile(name, bytes, true); engine.setFile(name, bytes); },
+    writeFile: (name, data) => { setFile(inCwd(name), data, true); },
+    deleteFile: (name) => { removeFile(inCwd(name)); },
+    saveFigure: async (id, name) => { const bytes = await figs.toPngBytes(id); setFile(inCwd(name), bytes, true); },
     busy: (b) => setBusy(b),
   });
   setupEditor();
@@ -160,17 +161,53 @@ async function refreshNotes() { try { state.notes = await store.myNotes(); rende
 function syncEngineFiles() {
   const obj = {};
   for (const [n, d] of state.courseFiles) obj[n] = d;
-  for (const [n, f] of state.files) obj[n] = f.data;
+  for (const [n, f] of state.files) if (dirOf(n) === state.cwd && !isKeep(n)) obj[baseOf(n)] = f.data;
   engine.setFiles(obj);
+}
+// ---- folders: a file key is 'name' (root) or 'Folder/name'; 'Folder/.keep' marks an empty folder ----
+const dirOf = (k) => (k.includes('/') ? k.slice(0, k.indexOf('/')) : '');
+const baseOf = (k) => k.slice(k.indexOf('/') + 1);
+const isKeep = (k) => baseOf(k) === '.keep';
+const inCwd = (name) => (state.cwd ? `${state.cwd}/${name}` : name);
+function engineSet(key, data) { if (dirOf(key) === state.cwd && !isKeep(key)) engine.setFile(baseOf(key), data); }
+function folders() { const s = new Set(); for (const k of state.files.keys()) if (dirOf(k)) s.add(dirOf(k)); return [...s].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase())); }
+function cd(folder) {
+  state.cwd = folder;
+  $('#crumbPath').innerHTML = folder ? `<a href="#" id="crumbRoot">MATLAB Drive</a> / ${esc(folder)} /` : 'MATLAB Drive /';
+  const r = $('#crumbRoot'); if (r) r.onclick = (e) => { e.preventDefault(); cd(''); };
+  syncEngineFiles(); renderFiles();
+}
+async function newFolder() {
+  const n = await promptFa('نام پوشه جدید (فقط حروف انگلیسی، عدد و _ ؛ با حرف شروع شود):', 'NewFolder');
+  if (!n) return;
+  const clean = n.trim();
+  if (!VALID_NAME.test(clean)) { await alertFa('نام پوشه نامعتبر است. مثلاً HW1 یا Quiz_05.'); return; }
+  if (!folders().includes(clean)) setFile(`${clean}/.keep`, '', true);
+  cd(clean);
+}
+async function deleteFolderPrompt(folder) {
+  const keys = [...state.files.keys()].filter(k => dirOf(k) === folder);
+  const n = keys.filter(k => !isKeep(k)).length;
+  if (!(await confirmFa(`پوشه «${folder}»${n ? ` و ${n} فایل داخل آن` : ''} حذف شود؟ این کار برگشت‌پذیر نیست.`))) return;
+  keys.forEach(removeFile);
+  if (state.cwd === folder) cd('');
 }
 function renderFiles() {
   const tb = $('#fileList');
-  const names = [...state.files.keys()].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-  tb.innerHTML = names.map(n => {
+  const names = [...state.files.keys()].filter(k => dirOf(k) === state.cwd && !isKeep(k)).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+  const dirs = state.cwd ? [] : folders();
+  const up = state.cwd ? '<tr data-up="1"><td><i class="fi fi-dir"></i>..</td></tr>' : '';
+  tb.innerHTML = up + dirs.map(d => `<tr data-dir="${esc(d)}"><td><i class="fi fi-dir"></i>${esc(d)}</td></tr>`).join('') + names.map(n => {
     const f = state.files.get(n);
     const hasNote = state.notes.some(x => x.fileName === n);
-    return `<tr data-name="${esc(n)}" class="${n === state.active ? 'sel' : ''}"><td><i class="fi ${fileIcon(n)}"></i>${esc(n)}${f.saved ? '' : ' <span class="unsaved" title="Not saved yet">●</span>'}${hasNote ? ' <span class="note-dot" title="Teacher note">✉</span>' : ''}</td></tr>`;
+    return `<tr data-name="${esc(n)}" class="${n === state.active ? 'sel' : ''}"><td><i class="fi ${fileIcon(n)}"></i>${esc(baseOf(n))}${f.saved ? '' : ' <span class="unsaved" title="Not saved yet">●</span>'}${hasNote ? ' <span class="note-dot" title="Teacher note">✉</span>' : ''}</td></tr>`;
   }).join('') || '<tr><td class="muted">No files yet — click “New Script”.</td></tr>';
+  // folders open with a single tap (easier on phones)
+  $$('#fileList tr[data-dir]').forEach(tr => {
+    tr.onclick = () => cd(tr.dataset.dir);
+    tr.oncontextmenu = (e) => { e.preventDefault(); showCtx(e, [['Open', () => cd(tr.dataset.dir)], ['Delete folder', () => deleteFolderPrompt(tr.dataset.dir)]]); };
+  });
+  $$('#fileList tr[data-up]').forEach(tr => (tr.onclick = () => cd('')));
   $$('#fileList tr[data-name]').forEach(tr => {
     tr.onclick = () => { $$('#fileList tr').forEach(x => x.classList.remove('sel')); tr.classList.add('sel'); fileDetails(tr.dataset.name); };
     tr.ondblclick = () => openOrLoad(tr.dataset.name);
@@ -205,9 +242,10 @@ function fileMenu(e, name) {
 }
 function openOrLoad(name) {
   toggleDrawer(false);
+  if (dirOf(name) !== state.cwd) cd(dirOf(name));
   showPanelMobile(name.endsWith('.mat') ? 'pCmd' : 'pEditor');
   if (name.endsWith('.m') || /\.(txt|csv)$/i.test(name)) openFile(name);
-  else if (name.endsWith('.mat')) runCommand(`load('${name}')`);
+  else if (name.endsWith('.mat')) runCommand(`load('${baseOf(name)}')`);
   else fileDetails(name);
 }
 function showCtx(e, items) {
@@ -224,20 +262,21 @@ function download(name, data) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 async function copyCourseFile(name) {
+  name = inCwd(name);
   if (state.files.has(name) && !(await confirmFa(`فایل ${name} در پوشه شما وجود دارد. جایگزین شود؟`))) return;
-  setFile(name, state.courseFiles.get(name), true);
+  setFile(name, state.courseFiles.get(baseOf(name)), true);
 }
 
 function setFile(name, data, save = false) {
   const cur = state.files.get(name);
   state.files.set(name, { data, saved: !save && cur ? cur.saved : !save, savedAt: cur?.savedAt, stats: cur?.stats || emptyStats() });
-  engine.setFile(name, data);
+  engineSet(name, data);
   if (state.docs.has(name) && typeof data === 'string' && state.docs.get(name).getValue() !== data) state.docs.get(name).setValue(data);
   renderFiles();
   if (save) scheduleSave(name, 0);
 }
 function removeFile(name) {
-  state.files.delete(name); engine.setFile(name, null); closeTab(name, true);
+  state.files.delete(name); engineSet(name, null); closeTab(name, true);
   store.deleteFile(name).catch(e => cmdWrite(`Could not delete ${name}: ${e.message}\n`, 'err'));
   dropDraft(name); renderFiles();
 }
@@ -290,7 +329,7 @@ function setupEditor() {
     if (!state.active || ch.origin === 'setValue') return;
     const f = state.files.get(state.active); if (!f) return;
     f.data = c.getValue(); f.saved = false;
-    engine.setFile(state.active, f.data);
+    engineSet(state.active, f.data);
     putDraft(state.active, f.data);
     scheduleSave(state.active);
     markTab(state.active);
@@ -325,7 +364,7 @@ function openReadOnly(name) {
   cm.getWrapperElement().hidden = false; $('#emptyEditor').hidden = true; renderTabs(); showNoteFor(null);
 }
 function renderTabs() {
-  $('#etabs').innerHTML = state.open.map(n => `<div class="etab ${n === state.active ? 'on' : ''}" data-name="${esc(n)}"><span>${esc(n)}</span>${state.files.get(n) && !state.files.get(n).saved ? '<b class="dot">*</b>' : ''}<button title="Close">×</button></div>`).join('') + '<button class="etab-add" title="New script">+</button>';
+  $('#etabs').innerHTML = state.open.map(n => `<div class="etab ${n === state.active ? 'on' : ''}" data-name="${esc(n)}" title="${esc(n)}"><span>${esc(n.startsWith('🔒') ? n : baseOf(n))}</span>${state.files.get(n) && !state.files.get(n).saved ? '<b class="dot">*</b>' : ''}<button title="Close">×</button></div>`).join('') + '<button class="etab-add" title="New script">+</button>';
   $$('#etabs .etab').forEach(t => {
     t.onclick = (e) => { if (e.target.tagName === 'BUTTON') closeTab(t.dataset.name); else t.dataset.name.startsWith('🔒') ? openReadOnly(t.dataset.name.slice(2)) : openFile(t.dataset.name); };
   });
@@ -353,26 +392,26 @@ function showNoteFor(name) {
 async function newScript(kind = 'script') {
   const base = kind === 'function' ? 'myFunction' : 'untitled';
   let k = 1; let name = `${base}.m`;
-  while (state.files.has(name)) name = `${base}${++k}.m`;
+  while (state.files.has(inCwd(name))) name = `${base}${++k}.m`;
   const n2 = await promptFa(kind === 'function' ? 'نام تابع (فقط حروف انگلیسی، عدد و _ ؛ با حرف شروع شود):' : 'نام فایل اسکریپت (فقط حروف انگلیسی، عدد و _ ؛ با حرف شروع شود):', name.replace(/\.m$/, ''));
   if (!n2) return;
   const clean = n2.trim().replace(/\.m$/, '');
   if (!VALID_NAME.test(clean)) { await alertFa('نام نامعتبر است. نام فایل باید با یک حرف انگلیسی شروع شود و فقط شامل حروف انگلیسی، عدد و _ باشد (مثل Quiz01 یا my_script).'); return; }
-  const fname = clean + '.m';
+  const fname = inCwd(clean + '.m');
   if (state.files.has(fname)) { openFile(fname); return; }
   const content = kind === 'function' ? `function output = ${clean}(input)\n% ${clean}  Short description of the function\n\noutput = input;\nend\n` : '';
   setFile(fname, content, true); openFile(fname); cm.focus();
 }
 async function renameFilePrompt(name) {
   const isM = name.endsWith('.m');
-  const n2 = await promptFa('نام جدید:', name);
-  if (!n2 || n2 === name) return;
-  const nn = isM && !n2.endsWith('.m') ? n2 + '.m' : n2;
-  if (isM && !VALID_NAME.test(nn.replace(/\.m$/, ''))) { await alertFa('نام نامعتبر است.'); return; }
+  const n2 = await promptFa('نام جدید:', baseOf(name));
+  if (!n2 || n2 === baseOf(name) || n2.includes('/')) return;
+  const nn = (dirOf(name) ? dirOf(name) + '/' : '') + (isM && !n2.endsWith('.m') ? n2 + '.m' : n2);
+  if (isM && !VALID_NAME.test(baseOf(nn).replace(/\.m$/, ''))) { await alertFa('نام نامعتبر است.'); return; }
   if (state.files.has(nn)) { await alertFa('فایلی با این نام وجود دارد.'); return; }
   try { await store.renameFile(name, nn); } catch (e) { await alertFa('تغییر نام انجام نشد: ' + e.message); return; }
   const f = state.files.get(name); state.files.delete(name); state.files.set(nn, f);
-  engine.setFile(name, null); engine.setFile(nn, f.data);
+  engineSet(name, null); engineSet(nn, f.data);
   const i = state.open.indexOf(name); if (i >= 0) { state.open[i] = nn; state.docs.set(nn, state.docs.get(name)); state.docs.delete(name); if (state.active === name) state.active = nn; }
   renderTabs(); renderFiles();
 }
@@ -393,7 +432,8 @@ function runActive() {
 function runFile(name) {
   const f = state.files.get(name); if (!f) return;
   saveActive();
-  const base = name.replace(/\.m$/, '');
+  if (dirOf(name) !== state.cwd) { cd(dirOf(name)); cmdWrite(`cd ${state.cwd || '/MATLAB Drive'}\n`, 'dim'); }
+  const base = baseOf(name).replace(/\.m$/, '');
   if (!VALID_NAME.test(base)) { cmdWrite(`Error: "${name}" is not a valid MATLAB file name. Rename it (letters, digits, underscores; must start with a letter).\n`, 'err'); return; }
   cmdEcho(base);
   runCode(f.data, 'script', base);
@@ -530,11 +570,12 @@ function setupToolstrip() {
   $$('.tst').forEach(b => b.onclick = () => { $$('.tst').forEach(x => x.classList.toggle('on', x === b)); $$('.strip').forEach(s => (s.hidden = s.dataset.strip !== b.dataset.strip)); });
   $('#bNewScript').onclick = () => newScript();
   $('#bNewFunc').onclick = () => newScript('function');
+  $('#bNewFolder').onclick = () => newFolder();
   $('#bUpload').onclick = () => $('#fileInput').click();
   $('#fileInput').onchange = async (e) => {
     for (const file of e.target.files) {
       if (file.size > 15 * 1024 * 1024) { await alertFa(`فایل ${file.name} بزرگ‌تر از ۱۵ مگابایت است.`); continue; }
-      const name = file.name.replace(/\s+/g, '_');
+      const name = inCwd(file.name.replace(/\s+/g, '_'));
       const data = isBinaryName(name) ? new Uint8Array(await file.arrayBuffer()) : await file.text();
       setFile(name, data, true);
       if (guard.enabled && typeof data === 'string') { const f = state.files.get(name); f.stats.uploaded = (f.stats.uploaded || 0) + 1; }

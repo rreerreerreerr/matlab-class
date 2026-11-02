@@ -66,6 +66,7 @@ async function selectStudent(id) {
   box.innerHTML = `<div class="tp-loading">در حال بارگذاری…</div>`;
   let files;
   try { files = await store.studentFiles(id); } catch (e) { box.innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  files = files.filter(f => !f.name.endsWith('/.keep'));
   st.files = files;
   box.innerHTML = `
     <div class="st-head"><div><h2>${esc(s.full_name)}</h2><span class="muted" dir="ltr">${esc(s.student_id)}</span> · <span class="muted">عضویت ${fmtDate(s.created_at)}</span></div>
@@ -118,12 +119,15 @@ function openViewer(host, file, siblings, student) {
     figs.closeAll();
     const files = {};
     for (const c of st.course) files[c.name] = c.data;
-    for (const f of siblings) files[f.name] = f.data;
+    // the student's code runs inside its own folder, like MATLAB after cd
+    const dir = (n) => (n.includes('/') ? n.slice(0, n.indexOf('/')) : '');
+    for (const f of siblings) if (dir(f.name) === dir(file.name)) files[f.name.slice(f.name.indexOf('/') + 1)] = f.data;
     engine.setFiles(files);
     await engine.run('clear all; close all', 'command');
-    runOut.textContent = `>> ${file.name.replace(/\.m$/, '')}\n`;
+    const base = file.name.slice(file.name.indexOf('/') + 1).replace(/\.m$/, '');
+    runOut.textContent = `>> ${base}\n`;
     runBtn.disabled = true;
-    await engine.run(file.data, 'script', file.name.replace(/\.m$/, ''));
+    await engine.run(file.data, 'script', base);
     runBtn.disabled = false;
   };
   v.inputHost = $('.v-in', v);
@@ -155,7 +159,7 @@ function askInput(prompt) {
 
 // ---------------- by assignment ----------------
 async function loadAssign() {
-  try { st.meta = await store.allFilesMeta(); } catch (e) { $('#asList').innerHTML = `<li class="err">${esc(e.message)}</li>`; return; }
+  try { st.meta = (await store.allFilesMeta()).filter(f => !f.name.endsWith('/.keep')); } catch (e) { $('#asList').innerHTML = `<li class="err">${esc(e.message)}</li>`; return; }
   renderAssignList();
 }
 function renderAssignList() {
@@ -221,7 +225,7 @@ async function zipAll() {
     for (const s of st.students) {
       const files = await store.studentFiles(s.id);
       const folder = zip.folder(`${s.student_id}_${(s.full_name || '').replace(/[\\/:*?"<>|]/g, '_')}`);
-      for (const f of files) folder.file(f.name, f.data);
+      for (const f of files) if (!f.name.endsWith('/.keep')) folder.file(f.name, f.data);
     }
     download(`all_students_${new Date().toISOString().slice(0, 10)}.zip`, await zip.generateAsync({ type: 'blob' }));
   } catch (e) { alertFa('خطا: ' + e.message); }
