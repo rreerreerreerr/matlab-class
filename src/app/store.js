@@ -101,7 +101,10 @@ class SupabaseStore {
   async listStudents() {
     const { data, error } = await this.sb.from('student_overview').select('*').order('full_name');
     if (error) throw error;
-    return data;
+    const { data: free, error: e2 } = await this.sb.from('profiles').select('id').eq('can_paste', true);
+    if (e2) throw e2;
+    const exempt = new Set(free.map(p => p.id));
+    return data.map(s => ({ ...s, can_paste: exempt.has(s.id) }));
   }
   async studentFiles(studentId) {
     const { data, error } = await this.sb.from('files').select('id,name,content,is_binary,size,created_at,updated_at,stats').eq('owner', studentId).order('name');

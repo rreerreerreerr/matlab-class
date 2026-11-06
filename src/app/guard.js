@@ -54,6 +54,7 @@ export class Guard {
     // phones: stop the paste before CodeMirror sees it (capture phase on its hidden input)
     this.attachInput(cm.getInputField(), true);
     cm.on('change', (c, ch) => {
+      if (!this.enabled) return;
       if (ch.origin === 'setValue' || ch.origin === 'undo' || ch.origin === 'redo') return;
       const text = ch.text.join('\n');
       if ((ch.text.length >= BULK_LINES || text.length >= BULK_CHARS) && !this.isInternal(text)) {
@@ -88,6 +89,7 @@ export class Guard {
   }
 
   typed() {
+    if (!this.enabled) return;
     const st = this.statsOf(); if (!st) return;
     const now = Date.now();
     st.keys = (st.keys || 0) + 1;

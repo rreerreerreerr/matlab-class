@@ -72,7 +72,7 @@ async function selectStudent(id) {
     <div class="st-head"><div><h2>${esc(s.full_name)}</h2><span class="muted" dir="ltr">${esc(s.student_id)}</span> · <span class="muted">عضویت ${fmtDate(s.created_at)}</span></div>
       <div class="st-tools"><button id="bStZip" class="link">دانلود فایل‌ها (zip)</button><button id="bStPw" class="link">تغییر رمز دانشجو</button></div></div>
     <table class="tp-table"><thead><tr><th>نام فایل</th><th>اندازه</th><th>ساخته شده</th><th>آخرین ویرایش</th><th>نحوه نوشتن</th></tr></thead>
-    <tbody>${files.map(f => `<tr data-id="${f.id}"><td dir="ltr" class="fname">${esc(f.name)}</td><td>${fmtSize(f.size)}</td><td>${fmtDate(f.created_at)}</td><td>${fmtDate(f.updated_at)}</td><td>${fmtStats(f)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">این دانشجو هنوز فایلی ندارد.</td></tr>'}</tbody></table>
+    <tbody>${files.map(f => `<tr data-id="${f.id}"><td dir="ltr" class="fname">${esc(f.name)}</td><td>${fmtSize(f.size)}</td><td>${fmtDate(f.created_at)}</td><td>${fmtDate(f.updated_at)}</td><td>${fmtStats(f, s)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">این دانشجو هنوز فایلی ندارد.</td></tr>'}</tbody></table>
     <div id="stViewer"></div>`;
   $$('#stContent tr[data-id]').forEach(tr => (tr.onclick = () => { $$('#stContent tr').forEach(x => x.classList.remove('on')); tr.classList.add('on'); openViewer($('#stViewer'), files.find(f => f.id === tr.dataset.id), files, s); }));
   $('#bStZip').onclick = () => zipFiles(`${s.student_id}_${s.full_name}`, files);
@@ -86,7 +86,8 @@ async function resetPw(s) {
 }
 
 // ---------------- typing / paste stats ----------------
-function fmtStats(f) {
+function fmtStats(f, owner) {
+  if (owner?.can_paste) return '<span class="muted">—</span>'; // exempt from paste lock and tracking
   const x = f.stats || {};
   if (f.is_binary || !(x.keys || x.pasteBlocked || x.bulk || x.uploaded)) return '<span class="muted">—</span>';
   const out = [];
@@ -179,7 +180,7 @@ async function showAssign(name) {
   const box = $('#asContent');
   box.innerHTML = `<h2 dir="ltr" style="text-align:right">${esc(name)}</h2>
     <table class="tp-table"><thead><tr><th>دانشجو</th><th>شماره</th><th>آخرین ویرایش</th><th>اندازه</th><th>نحوه نوشتن</th></tr></thead>
-    <tbody>${rows.sort((a, b) => (byId.get(a.owner)?.full_name || '').localeCompare(byId.get(b.owner)?.full_name || '', 'fa')).map(r => `<tr data-id="${r.id}" data-owner="${r.owner}"><td>${esc(byId.get(r.owner)?.full_name || '؟')}</td><td dir="ltr">${esc(byId.get(r.owner)?.student_id || '')}</td><td>${fmtDate(r.updated_at)}</td><td>${fmtSize(r.size)}</td><td>${fmtStats(r)}</td></tr>`).join('')}</tbody></table>
+    <tbody>${rows.sort((a, b) => (byId.get(a.owner)?.full_name || '').localeCompare(byId.get(b.owner)?.full_name || '', 'fa')).map(r => `<tr data-id="${r.id}" data-owner="${r.owner}"><td>${esc(byId.get(r.owner)?.full_name || '؟')}</td><td dir="ltr">${esc(byId.get(r.owner)?.student_id || '')}</td><td>${fmtDate(r.updated_at)}</td><td>${fmtSize(r.size)}</td><td>${fmtStats(r, byId.get(r.owner))}</td></tr>`).join('')}</tbody></table>
     ${missing.length ? `<details class="missing"><summary>${missing.length} دانشجو این فایل را ندارند</summary><p>${missing.map(s => esc(s.full_name) + ` (<span dir="ltr">${esc(s.student_id)}</span>)`).join('، ')}</p></details>` : ''}
     <div id="asViewer"></div>`;
   $$('#asContent tr[data-id]').forEach(tr => (tr.onclick = async () => {
