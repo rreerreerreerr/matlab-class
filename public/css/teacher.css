@@ -64,3 +64,4 @@ body.tp { font-family: var(--fa); background: #eef1f5; height: auto; min-height:
 .flag.ok { background: #e8f3ea; color: #23633a; }
 .flag.warn { background: #fff3d6; color: #8a5a00; }
 .flag.bad { background: #fde4e4; color: #a12323; }
+.link.danger { color: #b3261e; }

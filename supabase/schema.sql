@@ -110,6 +110,10 @@ drop policy if exists "files: teacher read" on public.files;
 create policy "files: teacher read" on public.files
   for select using (public.is_teacher());
 
+drop policy if exists "files: teacher delete" on public.files;
+create policy "files: teacher delete" on public.files
+  for delete using (public.is_teacher());
+
 drop policy if exists "notes: teacher all" on public.notes;
 create policy "notes: teacher all" on public.notes
   for all using (public.is_teacher()) with check (public.is_teacher() and teacher = auth.uid());

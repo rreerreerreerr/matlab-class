@@ -116,6 +116,11 @@ class SupabaseStore {
     if (error) throw error;
     return data;
   }
+  async deleteStudentFile(id) {
+    const { data, error } = await this.sb.from('files').delete().eq('id', id).select('id');
+    if (error) throw error;
+    if (!data.length) throw new Error('فایل حذف نشد (اجازه حذف وجود ندارد یا فایل قبلاً حذف شده است).');
+  }
   async fileById(id) { const { data, error } = await this.sb.from('files').select('*').eq('id', id).single(); if (error) throw error; return { ...data, data: decode(data) }; }
   async notesFor(fileId) { const { data, error } = await this.sb.from('notes').select('*').eq('file_id', fileId).order('created_at'); if (error) throw error; return data; }
   async addNote(fileId, body) { const s = await this.session(); const { error } = await this.sb.from('notes').insert({ file_id: fileId, teacher: s.user.id, body }); if (error) throw error; }
@@ -166,6 +171,7 @@ class MockTeacherStore {
   async listStudents() { return this.students.map(s => { const fs = this.files.filter(f => f.owner === s.id); return { ...s, file_count: fs.length, last_activity: fs.length ? fs.map(f => f.updated_at).sort().pop() : null }; }); }
   async studentFiles(id) { return this.files.filter(f => f.owner === id).map(f => ({ ...f, data: f.content })); }
   async allFilesMeta() { return this.files.map(({ id, name, owner, size, updated_at, stats }) => ({ id, name, owner, size, updated_at, stats })); }
+  async deleteStudentFile(id) { this.files = this.files.filter(f => f.id !== id); }
   async notesFor(fileId) { return this.notes.filter(n => n.file_id === fileId); }
   async addNote(fileId, body) { this.notes.push({ id: 'n' + Math.random(), file_id: fileId, body, created_at: new Date().toISOString() }); }
   async deleteNote(id) { this.notes = this.notes.filter(n => n.id !== id); }

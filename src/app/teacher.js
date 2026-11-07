@@ -133,6 +133,13 @@ function openViewer(host, file, siblings, student) {
   };
   v.inputHost = $('.v-in', v);
   $('.v-dl', v).onclick = () => download(file.name, file.data);
+  $('.v-del', v).onclick = async () => {
+    if (!(await confirmFa(`فایل «${file.name}» از حساب ${student ? student.full_name : 'دانشجو'} برای همیشه حذف شود؟ یادداشت‌های این فایل هم پاک می‌شوند و این کار برگشت‌پذیر نیست.`))) return;
+    try { await store.deleteStudentFile(file.id); } catch (e) { await alertFa('حذف انجام نشد: ' + e.message); return; }
+    await loadStudents();
+    if (host.id === 'stViewer') selectStudent(student.id);
+    else { await loadAssign(); showAssign(file.name); }
+  };
   loadNotes(v, file);
   $('.v-note-add', v).onclick = async () => {
     const t = $('.v-note-text', v).value.trim(); if (!t) return;

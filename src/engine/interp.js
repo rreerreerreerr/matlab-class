@@ -343,7 +343,7 @@ export class Interp {
   }
 
   // recursively build new value for nested lvalue like a.b(2).c{3} = v
-  assignPath(cur, lv, value, frame) {
+  assignPath(cur, lv, value, frame, fromField = false) {
     if (lv.type === 'Id') return value;
     const parentNode = lv.e;
     const parent = this.getForAssign(parentNode, frame);
@@ -357,7 +357,11 @@ export class Interp {
       const args = this.evalArgs(lv.args, frame, base);
       if (base.type === 'sym' || value.type === 'sym') newParent = this.symAssign(base, args, value);
       else if (base.type === 'table') throw new MError('Use dot or brace indexing to assign into a table.');
-      else newParent = subsasgn(base, args, value);
+      else if (fromField && base.type === 'struct' && value.type === 'struct') {
+        // s(i).f = v may add field f to the whole struct array
+        const [b2, v2] = unionFields(base, value);
+        newParent = subsasgn(b2, args, v2);
+      } else newParent = subsasgn(base, args, value);
     } else { // {}
       let base = parent === undefined ? new Cell(0, 0, []) : parent;
       if (base.type === 'num' && base.numel === 0) base = new Cell(0, 0, []);
@@ -368,7 +372,7 @@ export class Interp {
         newParent = subsasgn(base, args, new Cell(1, 1, [value]));
       }
     }
-    return this.assignPath(undefined, parentNode, newParent, frame);
+    return this.assignPath(undefined, parentNode, newParent, frame, lv.type === 'Field');
   }
 
   getForAssign(node, frame) {
@@ -810,6 +814,12 @@ function defaultContainer(value) {
   return empty();
 }
 
+function unionFields(a, b) {
+  const all = a.fields.slice();
+  for (const f of b.fields) if (!all.includes(f)) all.push(f);
+  const fix = (S) => new Struct(S.rows, S.cols, all, S.data.map(m => { const nm = new Map(); for (const f of all) nm.set(f, m.has(f) ? m.get(f) : empty()); return nm; }));
+  return [fix(a), fix(b)];
+}
 function setField(parent, fname, value) {
   if (parent === undefined || (parent.type === 'num' && parent.numel === 0)) {
     const s = new Struct(1, 1, [fname]);
