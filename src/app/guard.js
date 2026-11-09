@@ -2,13 +2,13 @@
 // - text copied inside the site (own files, course files, command window) may be pasted again;
 //   anything else is blocked and counted
 // - large insertions that did not come from the site are counted as "bulk"
-// - key presses and active typing time are recorded per file
+// - key presses are recorded per file
 // Stats travel with each file to the database so the teacher panel can show them.
 
-const BULK_LINES = 3, BULK_CHARS = 80, IME_LIMIT = 40, IDLE_CAP = 60000;
+const BULK_LINES = 3, BULK_CHARS = 80, IME_LIMIT = 40;
 const norm = (t) => String(t || '').replace(/\r\n?/g, '\n').trim();
 
-export function emptyStats() { return { keys: 0, activeMs: 0, pasteBlocked: 0, bulk: 0, bulkMax: 0 }; }
+export function emptyStats() { return { keys: 0, pasteBlocked: 0, bulk: 0, bulkMax: 0 }; }
 
 export class Guard {
   constructor({ enabled, sources, statsOf, onChange, notify }) {
@@ -18,7 +18,6 @@ export class Guard {
     this.onChange = onChange;    // () => called after stats change
     this.notify = notify;        // (msg) => user-visible warning
     this.clip = '';              // last text copied inside the site
-    this.lastEdit = 0;
     document.addEventListener('copy', () => this.remember(String(window.getSelection() || '')));
     document.addEventListener('cut', () => this.remember(String(window.getSelection() || '')));
   }
@@ -91,9 +90,6 @@ export class Guard {
   typed() {
     if (!this.enabled) return;
     const st = this.statsOf(); if (!st) return;
-    const now = Date.now();
     st.keys = (st.keys || 0) + 1;
-    if (this.lastEdit) st.activeMs = (st.activeMs || 0) + Math.min(now - this.lastEdit, IDLE_CAP);
-    this.lastEdit = now;
   }
 }

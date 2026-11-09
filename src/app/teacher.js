@@ -94,9 +94,8 @@ function fmtStats(f, owner) {
   if (x.uploaded) out.push(`<span class="flag warn" title="این فایل از کامپیوتر دانشجو بارگذاری شده، نه تایپ شده">بارگذاری‌شده ×${x.uploaded}</span>`);
   if (x.pasteBlocked) out.push(`<span class="flag warn" title="تلاش برای چسباندن متن از بیرون سایت (جلوگیری شد)">${x.pasteBlocked} تلاش پیست</span>`);
   if (x.bulk) out.push(`<span class="flag bad" title="ورود ناگهانی چند خط کد که از داخل سایت نیامده">ورود یکجا ×${x.bulk} (تا ${x.bulkMax} خط)</span>`);
-  const min = Math.round((x.activeMs || 0) / 60000);
   const lowTyping = !x.uploaded && f.size > 150 && (x.keys || 0) < f.size / 3;
-  out.push(`<span class="flag ${lowTyping ? 'bad' : 'ok'}" title="تعداد کلیدهای زده‌شده و زمان فعال تایپ">${x.keys || 0} کلید · ${min < 1 ? 'کمتر از ۱' : min} دقیقه</span>`);
+  out.push(`<span class="flag ${lowTyping ? 'bad' : 'ok'}" title="تعداد کلیدهای زده‌شده">${x.keys || 0} کلید</span>`);
   return out.join(' ');
 }
 
