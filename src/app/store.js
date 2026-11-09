@@ -159,7 +159,7 @@ class MockTeacherStore {
     this.files = [
       { id: 'f1', owner: 's1', name: 'Quiz05.m', content: "%% Quiz 5\nA = [4 7 2; 1 5 9; 6 3 8];\nmx = max(A(:))\nmn = min(A(:))\ns = sum(A(:))\nm = mean(A(:))\n", is_binary: false },
       { id: 'f2', owner: 's1', name: 'Quiz12.m', content: "time = 0:1:9;\nheartRate = [72 74 78 85 92 105 112 108 96 88];\nplot(time,heartRate,'-or','LineWidth',2)\ntitle('Heart rate'), xlabel('Time (min)'), ylabel('bpm'), grid on, legend('HR')\n", is_binary: false },
-      { id: 'f3', owner: 's2', stats: { keys: 12, pasteBlocked: 3, bulk: 1, bulkMax: 4 }, name: 'Quiz05.m', content: "A = [4 7 2; 1 5 9; 6 3 8];\nmax(A)\nsum(A)\n", is_binary: false },
+      { id: 'f3', owner: 's2', stats: { pasteBlocked: 3, bulk: 1, bulkMax: 4 }, name: 'Quiz05.m', content: "A = [4 7 2; 1 5 9; 6 3 8];\nmax(A)\nsum(A)\n", is_binary: false },
       { id: 'f4', owner: 's2', name: 'Quiz11.m', content: "name = input('Name: ','s');\ng = input('Grades: ');\nfprintf('%s: %.2f\\n', name, mean(g));\n", is_binary: false },
     ].map((f, k) => ({ ...f, size: f.content.length, created_at: new Date(now - 5e8 + k * 1e7).toISOString(), updated_at: new Date(now - 1e8 + k * 1e7).toISOString() }));
     this.notes = [{ id: 'n1', file_id: 'f3', body: 'max(A) بیشترین مقدار هر ستون را می‌دهد؛ برای کل ماتریس از max(A(:)) استفاده کنید.', created_at: new Date(now - 5e7).toISOString() }];

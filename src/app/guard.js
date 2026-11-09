@@ -2,13 +2,12 @@
 // - text copied inside the site (own files, course files, command window) may be pasted again;
 //   anything else is blocked and counted
 // - large insertions that did not come from the site are counted as "bulk"
-// - key presses are recorded per file
 // Stats travel with each file to the database so the teacher panel can show them.
 
 const BULK_LINES = 3, BULK_CHARS = 80, IME_LIMIT = 40;
 const norm = (t) => String(t || '').replace(/\r\n?/g, '\n').trim();
 
-export function emptyStats() { return { keys: 0, pasteBlocked: 0, bulk: 0, bulkMax: 0 }; }
+export function emptyStats() { return { pasteBlocked: 0, bulk: 0, bulkMax: 0 }; }
 
 export class Guard {
   constructor({ enabled, sources, statsOf, onChange, notify }) {
@@ -42,7 +41,6 @@ export class Guard {
   attachEditor(cm) {
     cm.on('copy', (c) => this.remember(c.getSelection()));
     cm.on('cut', (c) => this.remember(c.getSelection()));
-    cm.on('keydown', () => this.typed());
     cm.on('beforeChange', (c, ch) => {
       if (!this.enabled) return;
       const text = ch.text.join('\n');
@@ -70,7 +68,6 @@ export class Guard {
     if (!editorField) {
       el.addEventListener('copy', () => this.remember(el.value.slice(el.selectionStart, el.selectionEnd)));
       el.addEventListener('cut', () => this.remember(el.value.slice(el.selectionStart, el.selectionEnd)));
-      el.addEventListener('keydown', () => this.typed());
     }
     el.addEventListener('paste', (e) => {
       if (this.enabled && !this.isInternal(e.clipboardData && e.clipboardData.getData('text'))) stop(e);
@@ -87,9 +84,4 @@ export class Guard {
     }, true);
   }
 
-  typed() {
-    if (!this.enabled) return;
-    const st = this.statsOf(); if (!st) return;
-    st.keys = (st.keys || 0) + 1;
-  }
 }

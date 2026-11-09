@@ -89,13 +89,11 @@ async function resetPw(s) {
 function fmtStats(f, owner) {
   if (owner?.can_paste) return '<span class="muted">—</span>'; // exempt from paste lock and tracking
   const x = f.stats || {};
-  if (f.is_binary || !(x.keys || x.pasteBlocked || x.bulk || x.uploaded)) return '<span class="muted">—</span>';
+  if (f.is_binary || !(x.pasteBlocked || x.bulk || x.uploaded)) return '<span class="muted">—</span>';
   const out = [];
   if (x.uploaded) out.push(`<span class="flag warn" title="این فایل از کامپیوتر دانشجو بارگذاری شده، نه تایپ شده">بارگذاری‌شده ×${x.uploaded}</span>`);
   if (x.pasteBlocked) out.push(`<span class="flag warn" title="تلاش برای چسباندن متن از بیرون سایت (جلوگیری شد)">${x.pasteBlocked} تلاش پیست</span>`);
   if (x.bulk) out.push(`<span class="flag bad" title="ورود ناگهانی چند خط کد که از داخل سایت نیامده">ورود یکجا ×${x.bulk} (تا ${x.bulkMax} خط)</span>`);
-  const lowTyping = !x.uploaded && f.size > 150 && (x.keys || 0) < f.size / 3;
-  out.push(`<span class="flag ${lowTyping ? 'bad' : 'ok'}" title="تعداد کلیدهای زده‌شده">${x.keys || 0} کلید</span>`);
   return out.join(' ');
 }
 
